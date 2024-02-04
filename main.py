@@ -1,6 +1,9 @@
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from database import engine, SQLModel, AsyncSessionLocal
+from database import engine, SQLModel, get_db
+from models import User
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -9,13 +12,6 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
-
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
 
 @app.get("/")
 def read_root():
