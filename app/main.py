@@ -2,8 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from contextlib import asynccontextmanager
-from database import engine, SQLModel, get_db
-from models import User
+
+from app.database import engine, SQLModel, get_db
+from app.models import User
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
