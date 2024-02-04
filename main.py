@@ -16,3 +16,16 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to my app"}
+
+@app.post("/users/", response_model=User)
+async def create_user(user: User, db: AsyncSession = Depends(get_db)):
+    statement = select(User).where(User.email == user.email)
+    result = await db.execute(statement)
+    existing_user = result.scalars().first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already exists")
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
