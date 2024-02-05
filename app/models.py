@@ -14,7 +14,8 @@ class Loan(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     amount: float
-    annual_interest_rate: float
+    interest_rate: float
     term_months: int
     # Creates Loan relationship to User
     user: Optional["User"] = Relationship(back_populates="loans")
+    
