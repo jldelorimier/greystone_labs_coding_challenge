@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from app.database import engine, SQLModel, get_db
 from app.models import User, Loan
-from app.financial_calculations import amortization_schedule
+from app.financial_calculations import amortization_schedule, loan_summary_for_month
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,9 +40,22 @@ async def create_loan(loan: Loan, db: AsyncSession = Depends(get_db)):
     return loan
 
 @app.get("/loan/{loan_id}/schedule")
-async def fetch_loan_schedule(loan_id: int = Path(..., description="The ID of the loan to fetch the schedule for"), db: AsyncSession = Depends(get_db)):
+async def fetch_loan_schedule(loan_id: int = Path(..., description="The ID of the loan to fetch the schedule for"), 
+                              db: AsyncSession = Depends(get_db)):
     loan = await db.get(Loan, loan_id)
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
     schedule = amortization_schedule(loan)
     return schedule
+
+@app.get("/loan/{loan_id}/summary/{month}")
+async def fetch_loan_summary(loan_id: int = Path(..., description="The ID of the loan to fetch the summary for"),
+                             month: int = Path(..., ge=1, description="The month number to fetch the summary for"), 
+                             db: AsyncSession = Depends(get_db)):
+    loan = await db.get(Loan, loan_id)
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    if month > loan.term_months:
+        raise HTTPException(status_code=400, detail=f"Month must be less than or equal to the loan term of {loan.term_months} months")
+    loan_summary = loan_summary_for_month(month, loan)
+    return loan_summary
