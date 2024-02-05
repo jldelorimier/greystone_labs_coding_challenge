@@ -5,7 +5,7 @@ from typing import List
 from contextlib import asynccontextmanager
 
 from app.database import engine, SQLModel, get_db
-from app.models import User, Loan
+from app.models import User, Loan, UserLoanLink
 from app.financial_calculations import amortization_schedule, loan_summary_for_month
 
 @asynccontextmanager
@@ -71,3 +71,16 @@ async def fetch_loans_for_user(user_id: int, db: AsyncSession = Depends(get_db))
     if not loans:
         raise HTTPException(status_code=404, detail=f"No loans found for user with ID {user_id}")
     return loans
+
+@app.post("/loans/{loan_id}/share")
+async def share_loan(loan_id: int, target_user_id: int, db: AsyncSession = Depends(get_db)):
+    loan = await db.get(Loan, loan_id)
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    target_user = await db.get(User, target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    loan_user_association = UserLoanLink(user_id=target_user_id, loan_id=loan_id)
+    db.add(loan_user_association)
+    await db.commit()
+    return {"message": f"Loan shared successfully with user {target_user_id}"}
