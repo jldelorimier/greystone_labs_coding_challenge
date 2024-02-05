@@ -4,7 +4,7 @@ from sqlmodel import select
 from contextlib import asynccontextmanager
 
 from app.database import engine, SQLModel, get_db
-from app.models import User
+from app.models import User, Loan
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,3 +30,10 @@ async def create_user(user: User, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
     return user
+
+@app.post("/loans/")
+async def create_loan(loan: Loan, db: AsyncSession = Depends(get_db)):
+    db.add(loan)
+    await db.commit()
+    await db.refresh(loan)
+    return loan
