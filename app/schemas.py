@@ -4,6 +4,5 @@ from pydantic import BaseModel
 class LoanCreateRequest(BaseModel):
     user_id: int
     amount: float
-    interest_rate: float
+    annual_interest_rate: float
     term_months: int
-    

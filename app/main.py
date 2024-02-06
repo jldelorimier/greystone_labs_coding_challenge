@@ -40,7 +40,7 @@ async def create_loan(loan_create: LoanCreateRequest, db: AsyncSession = Depends
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     # Create and add the new loan to the session
-    loan = Loan(amount=loan_create.amount, interest_rate=loan_create.interest_rate, term_months=loan_create.term_months)
+    loan = Loan(amount=loan_create.amount, annual_interest_rate=loan_create.annual_interest_rate, term_months=loan_create.term_months)
     db.add(loan)
     await db.commit()
     await db.refresh(loan)

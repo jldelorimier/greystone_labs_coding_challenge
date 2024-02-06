@@ -2,7 +2,7 @@ from app.models import Loan
 
 def amortization_schedule(loan: Loan):
   schedule = []
-  i = loan.interest_rate / 100 / 12
+  i = loan.annual_interest_rate / 100 / 12
   l = loan.amount
   n = loan.term_months
   monthly_payment = l * ((i * (1 + i) ** n) / ((1 + i) ** n - 1))
@@ -16,7 +16,7 @@ def amortization_schedule(loan: Loan):
   return schedule
 
 def loan_summary_for_month(month, loan: Loan):
-  i = loan.interest_rate / 100 / 12
+  i = loan.annual_interest_rate / 100 / 12
   n = loan.term_months
   current_principal_balance = loan.amount
   monthly_payment = current_principal_balance * ((i * (1 + i) ** n) / ((1 + i) ** n - 1))
