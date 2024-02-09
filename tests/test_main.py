@@ -159,3 +159,46 @@ def test_fetch_loan_schedule_nonexistent_loan(client: TestClient):
     
     assert response.status_code == 404
     assert response.json()["detail"] == "Loan not found"
+
+# loan_summary tests
+def test_fetch_loan_summary(session: Session, client: TestClient):
+    test_loan = Loan(
+        amount=Decimal(100000.000000), 
+        annual_interest_rate=Decimal(12.00000), 
+        term_months=6, user_id=1)
+    session.add(test_loan)
+    session.commit()
+    test_month = 5
+
+    response = client.get(f"/loan/{test_loan.id}/summary/{test_month}")
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data == {
+        "current principal balance": 17084,
+        "principal already paid": 82916,
+        "interest already paid": 3358.18
+    }
+
+def test_fetch_loan_summary_month_past_loan_term(session: Session, client: TestClient):
+    test_loan = Loan(
+        amount=Decimal(100000.000000), 
+        annual_interest_rate=Decimal(12.00000), 
+        term_months=6, user_id=1)
+    session.add(test_loan)
+    session.commit()
+    test_month = 7
+
+    response = client.get(f"/loan/{test_loan.id}/summary/{test_month}")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == f"Month must be less than or equal to the loan term of {test_loan.term_months} months"
+
+def test_fetch_loan_summary_nonexistent_loan(client: TestClient):
+    nonexistent_loan_id = 99
+    month = 1
+
+    response = client.get(f"/loan/{nonexistent_loan_id}/summary/{month}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Loan not found"
