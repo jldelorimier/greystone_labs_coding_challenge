@@ -1,12 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Path, Body
+from fastapi import FastAPI, Depends, HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 from typing import List
 from contextlib import asynccontextmanager
 
-from app.schemas import LoanCreateRequest
 from app.database import engine, SQLModel, get_db
-from app.models import User, Loan, UserLoanLink
+from app.models import User, UserCreate, UserRead, Loan, LoanCreate, LoanRead, UserLoanLink
 from app.financial_calculations import amortization_schedule, loan_summary_for_month
 
 @asynccontextmanager
@@ -21,35 +20,39 @@ app = FastAPI(lifespan=lifespan)
 def read_root():
     return {"message": "Welcome to my app"}
 
-@app.post("/users/", response_model=User)
-async def create_user(user: User, db: AsyncSession = Depends(get_db)):
+@app.post("/users/", response_model=UserRead)
+async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # check if user email already exists
     statement = select(User).where(User.email == user.email)
     result = await db.execute(statement)
     existing_user = result.scalars().first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists")
-
-    db.add(user)
+    # assuming email doesn't already exist, add the user to the db:
+    db_user = User.model_validate(user)
+    db.add(db_user)
     await db.commit()
-    await db.refresh(user)
-    return user
+    await db.refresh(db_user)
+    return db_user
 
-@app.post("/loans/")
-async def create_loan(loan_create: LoanCreateRequest, db: AsyncSession = Depends(get_db)):
+@app.post("/loans/", response_model=LoanRead)
+async def create_loan(loan_create: LoanCreate, db: AsyncSession = Depends(get_db)):
+    # check that the User for whom the loan is being created exists
     user = await db.get(User, loan_create.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     # Create and add the new loan to the session
     loan = Loan(amount=loan_create.amount, annual_interest_rate=loan_create.annual_interest_rate, term_months=loan_create.term_months)
-    db.add(loan)
+    db_loan = Loan.model_validate(loan)
+    db.add(db_loan)
     await db.commit()
-    await db.refresh(loan)
+    await db.refresh(db_loan)
     # Link the loan to the user
-    loan_user_record = UserLoanLink(user_id=loan_create.user_id, loan_id=loan.id)
+    loan_user_record = UserLoanLink(user_id=loan_create.user_id, loan_id=db_loan.id)
     db.add(loan_user_record)
     await db.commit()
 
-    return loan
+    return db_loan
 
 @app.get("/loan/{loan_id}/schedule")
 async def fetch_loan_schedule(loan_id: int = Path(..., description="The ID of the loan to fetch the schedule for"), db: AsyncSession = Depends(get_db)):
