@@ -270,3 +270,81 @@ def test_fetch_loans_for_user_with_no_loans(session: Session, client: TestClient
 
     assert response.status_code == 404
     assert response.json()["detail"] == f"No loans found for user with ID {userB.id}"
+
+# share_loan tests
+def test_share_loan(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+    # create loan
+    test_loan = Loan(
+        amount=Decimal(100000.000000), 
+        annual_interest_rate=Decimal(12.00000), 
+        term_months=6, 
+        user_id=userB.id)
+    session.add(test_loan)
+    session.commit()
+    test_target_user_id = 1
+
+    response = client.post(
+        f"/loans/{test_loan.id}/share?target_user_id={test_target_user_id}"
+    )
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data == {
+        "message": "Loan shared successfully with user 1"
+    }
+
+def test_share_loan_with_nonexistent_loan(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+
+    nonexistent_loan_id = 999
+    test_target_user_id = 1
+
+    response = client.post(f"/loans/{nonexistent_loan_id}/share?target_user_id={test_target_user_id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Loan not found"
+
+def test_share_loan_with_nonexistent_target_user(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+    # create loan
+    test_loan = Loan(amount=Decimal(100000.000000), annual_interest_rate=Decimal(12.00000), term_months=6, user_id=userB.id)
+    session.add(test_loan)
+    session.commit()
+
+    nonexistent_target_user_id = 999
+
+    response = client.post(f"/loans/{test_loan.id}/share?target_user_id={nonexistent_target_user_id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Target user not found"
+
+def test_share_loan_with_user_already_associated_with_loan(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+    # create loan
+    loan_data = {
+        "amount": 1000,
+        "annual_interest_rate": 5,
+        "term_months": 12,
+        "user_id": userB.id
+    }
+    loan_creation_response = client.post("/loans/", json=loan_data)
+    test_loan_id = loan_creation_response.json()["id"]
+
+    
+    response = client.post(f"/loans/{test_loan_id}/share?target_user_id={userB.id}")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "User is already associated with this loan"
