@@ -104,3 +104,58 @@ def test_create_loan_user_does_not_exist(client: TestClient):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
+
+# loan_schedule tests
+def test_fetch_loan_schedule(session: Session, client: TestClient):
+    test_loan = Loan(
+        amount=Decimal(100000.000000), 
+        annual_interest_rate=Decimal(12.00000), 
+        term_months=6, user_id=1)
+    session.add(test_loan)
+    session.commit()
+
+    response = client.get(f"/loan/{test_loan.id}/schedule")
+    data = response.json()
+    expected_loan_schedule = [
+        {
+            "Month": 1,
+            "Remaining balance": 83745.16,
+            "Monthly payment": 17254.84
+        },
+        {
+            "Month": 2,
+            "Remaining balance": 67327.78,
+            "Monthly payment": 17254.84
+        },
+        {
+            "Month": 3,
+            "Remaining balance": 50746.22,
+            "Monthly payment": 17254.84
+        },
+        {
+            "Month": 4,
+            "Remaining balance": 33998.84,
+            "Monthly payment": 17254.84
+        },
+        {
+            "Month": 5,
+            "Remaining balance": 17084,
+            "Monthly payment": 17254.84
+        },
+        {
+            "Month": 6,
+            "Remaining balance": 0,
+            "Monthly payment": 17254.84
+        }
+    ]
+
+    assert response.status_code == 200
+    assert data == expected_loan_schedule
+
+def test_fetch_loan_schedule_nonexistent_loan(client: TestClient):
+    nonexistent_loan_id = 99
+
+    response = client.get(f"/loan/{nonexistent_loan_id}/schedule")
+    
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Loan not found"
