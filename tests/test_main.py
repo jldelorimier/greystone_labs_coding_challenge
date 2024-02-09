@@ -202,3 +202,71 @@ def test_fetch_loan_summary_nonexistent_loan(client: TestClient):
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Loan not found"
+
+# fetch_loans_for_user tests
+def test_fetch_loans_for_user(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+    # post request to create loan1 and corresponding UserLoanLink
+    client.post(
+        "/loans/", json={
+            "amount": 100000,
+            "annual_interest_rate": 12,
+            "term_months": 6,
+            "user_id": 1
+        }
+    )
+    # post request to create loan2 and corresponding UserLoanLink
+    client.post(
+        "/loans/", json={
+            "amount": 50000,
+            "annual_interest_rate": 24,
+            "term_months": 6,
+            "user_id": 1
+        }
+    )
+
+    response = client.get(
+        f"/users/{userB.id}/loans"
+    )
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data == [
+        {
+            "term_months": 6,
+            "id": 1,
+            "annual_interest_rate": "12.00000",
+            "amount": "100000.000000"
+        },
+        {
+            "term_months": 6,
+            "id": 2,
+            "annual_interest_rate": "24.00000",
+            "amount": "50000.000000"
+        }
+    ]
+
+def test_fetch_loans_for_nonexistent_user(client: TestClient):
+    non_existent_user_id = 999
+
+    response = client.get(f"/users/{non_existent_user_id}/loans")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+def test_fetch_loans_for_user_with_no_loans(session: Session, client: TestClient):
+    # create user
+    userB = User(name="test_userB@null.null", first_name="userB", last_name="lastnameB")
+    session.add(userB)
+    session.commit()
+
+    response = client.get(
+        f"/users/{userB.id}/loans"
+    )
+    data = response.json()
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == f"No loans found for user with ID {userB.id}"
